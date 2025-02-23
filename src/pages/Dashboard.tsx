@@ -28,8 +28,17 @@ interface DashboardProps {
   setIsDarkMode: (isDark: boolean) => void;
 }
 
+const currencies = {
+  USD: { symbol: "$", rate: 1 },
+  EUR: { symbol: "€", rate: 0.91 },
+  GBP: { symbol: "£", rate: 0.79 },
+  JPY: { symbol: "¥", rate: 148.41 },
+  CNY: { symbol: "¥", rate: 7.19 },
+};
+
 const Dashboard = ({ isDarkMode, setIsDarkMode }: DashboardProps) => {
   const { expenses, income, addExpense, addIncome } = useExpense();
+  const [currency, setCurrency] = useState<keyof typeof currencies>("USD");
   const [newExpense, setNewExpense] = useState({
     amount: "",
     category: "",
@@ -41,11 +50,15 @@ const Dashboard = ({ isDarkMode, setIsDarkMode }: DashboardProps) => {
     description: "",
   });
 
+  const convertAmount = (amount: number) => {
+    return (amount * currencies[currency].rate).toFixed(2);
+  };
+
   const handleAddExpense = (e: React.FormEvent) => {
     e.preventDefault();
     if (newExpense.amount && newExpense.category) {
       addExpense({
-        amount: parseFloat(newExpense.amount),
+        amount: parseFloat(newExpense.amount) / currencies[currency].rate, // Store in USD
         category: newExpense.category,
         description: newExpense.description,
         date: new Date().toISOString(),
@@ -58,7 +71,7 @@ const Dashboard = ({ isDarkMode, setIsDarkMode }: DashboardProps) => {
     e.preventDefault();
     if (newIncome.amount && newIncome.source) {
       addIncome({
-        amount: parseFloat(newIncome.amount),
+        amount: parseFloat(newIncome.amount) / currencies[currency].rate, // Store in USD
         source: newIncome.source,
         description: newIncome.description,
         date: new Date().toISOString(),
@@ -96,55 +109,82 @@ const Dashboard = ({ isDarkMode, setIsDarkMode }: DashboardProps) => {
   }));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-purple-100 p-4 sm:p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className={`min-h-screen ${isDarkMode ? 'dark' : ''} bg-background transition-colors duration-300`}>
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
         <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">
-            Financial Dashboard
-          </h1>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsDarkMode(!isDarkMode)}
-          >
-            {isDarkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
-          </Button>
+          <h1 className="text-2xl font-semibold">Financial Dashboard</h1>
+          <div className="flex items-center gap-4">
+            <Select
+              value={currency}
+              onValueChange={(value: keyof typeof currencies) => setCurrency(value)}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue placeholder="Currency" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(currencies).map(([code]) => (
+                  <SelectItem key={code} value={code}>
+                    {code}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className="hover:bg-accent"
+            >
+              {isDarkMode ? (
+                <Sun className="h-5 w-5" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="p-4 glass">
+          <Card className="p-4">
             <div className="flex items-center space-x-2">
               <DollarSign className="text-primary h-5 w-5" />
               <h2 className="font-semibold">Total Balance</h2>
             </div>
-            <p className="text-2xl font-bold mt-2">${balance.toFixed(2)}</p>
+            <p className="text-2xl font-bold mt-2">
+              {currencies[currency].symbol}{convertAmount(balance)}
+            </p>
           </Card>
-          <Card className="p-4 glass">
+          <Card className="p-4">
             <div className="flex items-center space-x-2">
               <PiggyBank className="text-green-500 h-5 w-5" />
               <h2 className="font-semibold">Total Income</h2>
             </div>
-            <p className="text-2xl font-bold mt-2">${totalIncome.toFixed(2)}</p>
+            <p className="text-2xl font-bold mt-2">
+              {currencies[currency].symbol}{convertAmount(totalIncome)}
+            </p>
           </Card>
-          <Card className="p-4 glass">
+          <Card className="p-4">
             <div className="flex items-center space-x-2">
               <DollarSign className="text-red-500 h-5 w-5" />
               <h2 className="font-semibold">Total Expenses</h2>
             </div>
-            <p className="text-2xl font-bold mt-2">${totalExpenses.toFixed(2)}</p>
+            <p className="text-2xl font-bold mt-2">
+              {currencies[currency].symbol}{convertAmount(totalExpenses)}
+            </p>
           </Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Card className="p-6 glass">
+          <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Add Expense</h2>
             <form onSubmit={handleAddExpense} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="expense-amount">Amount</Label>
+                <Label htmlFor="expense-amount">Amount ({currencies[currency].symbol})</Label>
                 <Input
                   id="expense-amount"
                   type="number"
-                  placeholder="Enter amount"
+                  step="0.01"
+                  placeholder={`Enter amount in ${currency}`}
                   value={newExpense.amount}
                   onChange={(e) =>
                     setNewExpense({ ...newExpense, amount: e.target.value })
@@ -189,17 +229,16 @@ const Dashboard = ({ isDarkMode, setIsDarkMode }: DashboardProps) => {
             </form>
           </Card>
 
-          <Card className="p-6 glass">
+          <Card className="p-6">
             <h2 className="text-xl font-semibold mb-4">Add Income</h2>
-            <form onSubmit={handleAddIncome} className="space
-
--y-4">
+            <form onSubmit={handleAddIncome} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="income-amount">Amount</Label>
+                <Label htmlFor="income-amount">Amount ({currencies[currency].symbol})</Label>
                 <Input
                   id="income-amount"
                   type="number"
-                  placeholder="Enter amount"
+                  step="0.01"
+                  placeholder={`Enter amount in ${currency}`}
                   value={newIncome.amount}
                   onChange={(e) =>
                     setNewIncome({ ...newIncome, amount: e.target.value })
@@ -245,15 +284,23 @@ const Dashboard = ({ isDarkMode, setIsDarkMode }: DashboardProps) => {
           </Card>
         </div>
 
-        <Card className="p-6 glass">
+        <Card className="p-6">
           <h2 className="text-xl font-semibold mb-4">Expense Breakdown</h2>
           <div className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData}>
+              <BarChart data={chartData.map(item => ({
+                ...item,
+                amount: parseFloat(convertAmount(item.amount))
+              }))}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="name" />
                 <YAxis />
-                <Tooltip />
+                <Tooltip 
+                  formatter={(value: number) => [
+                    `${currencies[currency].symbol}${value.toFixed(2)}`,
+                    "Amount"
+                  ]}
+                />
                 <Bar dataKey="amount" fill="#8884d8" />
               </BarChart>
             </ResponsiveContainer>
