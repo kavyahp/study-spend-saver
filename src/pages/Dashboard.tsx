@@ -50,6 +50,24 @@ const Dashboard = ({ isDarkMode, setIsDarkMode }: DashboardProps) => {
     description: "",
   });
 
+  useEffect(() => {
+    // Detect user's region and set default currency
+    const detectUserCurrency = async () => {
+      try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        const userCurrency = data.currency as keyof typeof currencies;
+        if (currencies[userCurrency]) {
+          setCurrency(userCurrency);
+        }
+      } catch (error) {
+        console.error('Error detecting currency:', error);
+      }
+    };
+
+    detectUserCurrency();
+  }, []);
+
   const convertAmount = (amount: number) => {
     return (amount * currencies[currency].rate).toFixed(2);
   };
@@ -111,14 +129,14 @@ const Dashboard = ({ isDarkMode, setIsDarkMode }: DashboardProps) => {
   return (
     <div className={`min-h-screen ${isDarkMode ? 'dark' : ''} bg-background transition-colors duration-300`}>
       <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold">Financial Dashboard</h1>
+        <div className="flex justify-between items-center bg-background/50 backdrop-blur-sm p-4 rounded-lg shadow-sm">
+          <h1 className="text-2xl font-semibold text-foreground">Financial Dashboard</h1>
           <div className="flex items-center gap-4">
             <Select
               value={currency}
               onValueChange={(value: keyof typeof currencies) => setCurrency(value)}
             >
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-[120px] bg-background text-foreground">
                 <SelectValue placeholder="Currency" />
               </SelectTrigger>
               <SelectContent>
@@ -133,7 +151,7 @@ const Dashboard = ({ isDarkMode, setIsDarkMode }: DashboardProps) => {
               variant="outline"
               size="icon"
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className="hover:bg-accent"
+              className="hover:bg-accent text-foreground"
             >
               {isDarkMode ? (
                 <Sun className="h-5 w-5" />
